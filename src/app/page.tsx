@@ -37,7 +37,7 @@ function Header() {
           Demo
         </a>
         <a
-          href="#github"
+          href="https://github.com/Burgos247/Zaploop" target="_blank" rel="noreferrer"
           className="rounded-full border border-ink-700 px-4 py-2 text-ink-100 transition hover:border-ink-500 hover:bg-ink-800"
         >
           GitHub
@@ -74,7 +74,7 @@ function Hero() {
           <ArrowIcon className="h-4 w-4" />
         </a>
         <a
-          href="#github"
+          href="https://github.com/Burgos247/Zaploop" target="_blank" rel="noreferrer"
           className="inline-flex items-center gap-2 rounded-full border border-ink-700 px-6 py-3 text-sm font-semibold text-ink-100 transition hover:border-ink-500 hover:bg-ink-800"
         >
           <GithubIcon className="h-4 w-4" />
@@ -303,7 +303,7 @@ function Footer() {
         </div>
         <div className="flex items-center gap-5">
           <a href="#demo" className="transition hover:text-ink-100">Demo</a>
-          <a href="#github" className="transition hover:text-ink-100">GitHub</a>
+          <a href="https://github.com/Burgos247/Zaploop" target="_blank" rel="noreferrer" className="transition hover:text-ink-100">GitHub</a>
           <a href="https://wapupay.com" target="_blank" rel="noreferrer" className="transition hover:text-ink-100">
             Wapupay
           </a>
