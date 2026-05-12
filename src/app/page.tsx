@@ -31,7 +31,7 @@ function Header() {
       </a>
       <nav className="flex items-center gap-2 text-sm">
         <a
-          href="#demo"
+          href="#como-funciona"
           className="rounded-full px-4 py-2 text-ink-200 transition hover:text-ink-100"
         >
           Demo
@@ -67,7 +67,7 @@ function Hero() {
       </p>
       <div className="mt-10 flex flex-wrap items-center gap-3">
         <a
-          href="#demo"
+          href="#como-funciona"
           className="inline-flex items-center gap-2 rounded-full bg-bolt-500 px-6 py-3 text-sm font-semibold text-ink-950 transition hover:bg-bolt-400"
         >
           Ver demo
@@ -120,7 +120,7 @@ function HowItWorks() {
     },
   ];
   return (
-    <section className="relative z-10 mx-auto max-w-6xl px-6 py-24">
+    <section id="como-funciona" className="relative z-10 mx-auto max-w-6xl px-6 py-24 scroll-mt-16">
       <SectionEyebrow>Cómo funciona</SectionEyebrow>
       <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight text-ink-100 sm:text-4xl">
         Tres pasos. Después se cobra solo.
@@ -302,7 +302,7 @@ function Footer() {
           <span>Zaploop — proyecto para la Hackatón La Crypta #3 (2026).</span>
         </div>
         <div className="flex items-center gap-5">
-          <a href="#demo" className="transition hover:text-ink-100">Demo</a>
+          <a href="#como-funciona" className="transition hover:text-ink-100">Demo</a>
           <a href="https://github.com/Burgos247/Zaploop" target="_blank" rel="noreferrer" className="transition hover:text-ink-100">GitHub</a>
           <a href="https://wapupay.com" target="_blank" rel="noreferrer" className="transition hover:text-ink-100">
             Wapupay
