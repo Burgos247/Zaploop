@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@nostr-dev-kit/ndk": "^3.0.3",
     "@supabase/supabase-js": "^2.45.4",
     "next": "^14.2.18",
     "nostr-tools": "^2.7.2",
