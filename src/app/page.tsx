@@ -1,8 +1,12 @@
+import { getSession } from "@/lib/server-session";
+import { LoginButton } from "@/components/nostr/LoginButton";
+
 export default function Home() {
+  const session = getSession();
   return (
     <main className="relative overflow-hidden">
       <BackgroundLayers />
-      <Header />
+      <Header initialPubkey={session?.pubkey ?? null} />
       <Hero />
       <HowItWorks />
       <Rails />
@@ -22,7 +26,7 @@ function BackgroundLayers() {
   );
 }
 
-function Header() {
+function Header({ initialPubkey }: { initialPubkey: string | null }) {
   return (
     <header className="relative z-10 mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
       <a href="#" className="flex items-center gap-2 text-ink-100">
@@ -32,16 +36,17 @@ function Header() {
       <nav className="flex items-center gap-2 text-sm">
         <a
           href="#como-funciona"
-          className="rounded-full px-4 py-2 text-ink-200 transition hover:text-ink-100"
+          className="hidden rounded-full px-4 py-2 text-ink-200 transition hover:text-ink-100 sm:inline-flex"
         >
           Demo
         </a>
         <a
           href="https://github.com/Burgos247/Zaploop" target="_blank" rel="noreferrer"
-          className="rounded-full border border-ink-700 px-4 py-2 text-ink-100 transition hover:border-ink-500 hover:bg-ink-800"
+          className="hidden rounded-full border border-ink-700 px-4 py-2 text-ink-100 transition hover:border-ink-500 hover:bg-ink-800 sm:inline-flex"
         >
           GitHub
         </a>
+        <LoginButton initialPubkey={initialPubkey} />
       </nav>
     </header>
   );

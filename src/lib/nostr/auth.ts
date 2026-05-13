@@ -1,6 +1,7 @@
 import "server-only";
 import { NDKEvent, type NostrEvent } from "@nostr-dev-kit/ndk";
 import { getVerifyNDK } from "./ndk";
+import { AUTH_EVENT_KIND } from "./auth-shared";
 
 // Server-side login verification. Aligns with the lacrypta/nostr-starter
 // idiom of using NDK end-to-end.
@@ -13,7 +14,7 @@ import { getVerifyNDK } from "./ndk";
 //
 // We verify here. Replay window is 60s — acceptable for hackathon scope.
 
-export const AUTH_EVENT_KIND = 22242;
+export { AUTH_EVENT_KIND };
 const MAX_AGE_SECONDS = 60;
 
 export type AuthResult =
