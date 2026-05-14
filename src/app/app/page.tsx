@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { nip19 } from "nostr-tools";
 import { getSession } from "@/lib/server-session";
 import { CreatePlanForm } from "@/components/dashboard/CreatePlanForm";
+import { PlanList } from "@/components/dashboard/PlanList";
 
 export const metadata = { title: "Zaploop — Panel" };
 
@@ -41,6 +42,8 @@ export default function AppPage() {
         <div className="mt-10 rounded-2xl border border-ink-800 bg-ink-900/40 p-6 sm:p-8">
           <CreatePlanForm pubkey={session.pubkey} />
         </div>
+
+        <PlanList pubkey={session.pubkey} />
       </section>
     </main>
   );
