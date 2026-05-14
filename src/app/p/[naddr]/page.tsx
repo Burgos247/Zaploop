@@ -10,6 +10,9 @@ import {
   parsePlanEvent,
   type PlanEventInput,
 } from "@/lib/nostr/plan-event";
+import { getSession } from "@/lib/server-session";
+import { LoginButton } from "@/components/nostr/LoginButton";
+import { SubscribeForm } from "@/components/plan/SubscribeForm";
 
 type Props = { params: { naddr: string } };
 
@@ -78,11 +81,46 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function PlanPage({ params }: Props) {
-  const plan = await loadPlan(params.naddr);
+  const [plan, session] = [await loadPlan(params.naddr), getSession()];
   if (!plan?.parsed.name) notFound();
 
   const p = plan.parsed;
   const npub = nip19.npubEncode(p.pubkey);
+
+  function SubscribeBox({
+    planNaddr,
+    interval,
+  }: {
+    planNaddr: string;
+    interval: PlanEventInput["interval"] | undefined;
+  }) {
+    return (
+      <div className="mt-12 rounded-2xl border border-ink-800 bg-ink-900/40 p-6 sm:p-8">
+        <h2 className="text-lg font-semibold text-ink-100">Suscribirme</h2>
+        <p className="mt-2 max-w-xl text-sm text-ink-300">
+          Vas a autorizar tu wallet Lightning vía Nostr Wallet Connect. El
+          primer cobro corre al instante; los siguientes se disparan solos
+          cada {intervalLabel(interval)} hasta que canceles.
+        </p>
+        <div className="mt-5">
+          {session ? (
+            <SubscribeForm planNaddr={planNaddr} />
+          ) : (
+            <div className="flex flex-wrap items-center gap-3">
+              <LoginButton initialPubkey={null} />
+              <span className="text-xs text-ink-400">
+                Necesitamos tu npub para asociarte a la suscripción.
+              </span>
+            </div>
+          )}
+        </div>
+        <p className="mt-4 text-xs text-ink-400">
+          El comercio recibe los pagos directo a su wallet o a su cuenta
+          Wapupay. Zaploop no custodia tus fondos.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <main className="min-h-screen">
@@ -124,26 +162,7 @@ export default async function PlanPage({ params }: Props) {
           <Fact label="Cobro">{p.rail === "wapupay" ? "Wapupay (ARS)" : "Lightning directo"}</Fact>
         </dl>
 
-        <div className="mt-12 rounded-2xl border border-ink-800 bg-ink-900/40 p-6 sm:p-8">
-          <h2 className="text-lg font-semibold text-ink-100">Suscribirme</h2>
-          <p className="mt-2 max-w-xl text-sm text-ink-300">
-            Vas a autorizar tu wallet Lightning vía Nostr Wallet Connect. El
-            primer cobro corre al instante; los siguientes se disparan solos
-            cada {intervalLabel(p.interval)} hasta que canceles.
-          </p>
-          <button
-            type="button"
-            disabled
-            title="El flujo de suscripción se habilita cuando conectemos la base de datos."
-            className="mt-5 inline-flex cursor-not-allowed items-center gap-2 rounded-full bg-bolt-500/60 px-6 py-3 text-sm font-semibold text-ink-950"
-          >
-            Suscribirme — próximamente
-          </button>
-          <p className="mt-3 text-xs text-ink-400">
-            El comercio recibe los pagos directo a su wallet o a su cuenta
-            Wapupay. Zaploop no custodia tus fondos.
-          </p>
-        </div>
+        <SubscribeBox planNaddr={params.naddr} interval={p.interval} />
 
         <p className="mt-10 text-xs text-ink-400">
           Plan publicado en relays Nostr (kind {PLAN_EVENT_KIND}). Si el
