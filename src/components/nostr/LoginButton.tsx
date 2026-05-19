@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { nip19 } from "nostr-tools";
 import { AUTH_EVENT_KIND } from "@/lib/nostr/auth-shared";
 import {
@@ -129,16 +130,22 @@ export function LoginButton({ initialPubkey }: Props) {
     const short = `${npub.slice(0, 10)}…${npub.slice(-4)}`;
     return (
       <div className="flex items-center gap-2">
+        <Link
+          href="/app"
+          title={`Ir al panel (${npub})`}
+          className="inline-flex items-center gap-2 rounded-full border border-ink-700 px-4 py-2 text-xs font-mono text-ink-100 transition hover:border-bolt-500 hover:bg-ink-800"
+        >
+          <span>{short}</span>
+          <span className="text-ink-400">·</span>
+          <span className="text-ink-300">panel</span>
+        </Link>
         <button
           type="button"
           onClick={logout}
-          title={`Salir (${npub})`}
           disabled={state.kind === "loading"}
-          className="inline-flex items-center gap-2 rounded-full border border-ink-700 px-4 py-2 text-xs font-mono text-ink-100 transition hover:border-bolt-500 hover:bg-ink-800 disabled:opacity-50"
+          className="text-[10px] uppercase tracking-wider text-ink-400 transition hover:text-ink-100 disabled:opacity-50"
         >
-          {short}
-          <span className="text-ink-400">·</span>
-          <span className="text-ink-300">salir</span>
+          salir
         </button>
         {hasLocal && (
           <button
