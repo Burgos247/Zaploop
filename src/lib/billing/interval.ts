@@ -1,7 +1,7 @@
-import type { BillingInterval } from "@/lib/store/types";
+export type BillingInterval = "weekly" | "monthly" | "quarterly" | "yearly";
 
 // Approximate day-based steps. Calendar-accurate logic (month boundaries,
-// leap years) belongs in the Postgres-backed store once it lands.
+// leap years) is out of scope for the hackathon.
 const DAYS: Record<BillingInterval, number> = {
   weekly: 7,
   monthly: 30,

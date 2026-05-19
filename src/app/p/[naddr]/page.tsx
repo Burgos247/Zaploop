@@ -104,7 +104,14 @@ export default async function PlanPage({ params }: Props) {
         </p>
         <div className="mt-5">
           {session ? (
-            <SubscribeForm planNaddr={planNaddr} />
+            <SubscribeForm
+              planNaddr={planNaddr}
+              planSlug={p.slug ?? ""}
+              merchantPubkey={p.pubkey}
+              amountSat={p.amountSat ?? 0}
+              interval={p.interval ?? "monthly"}
+              rail={p.rail ?? "self"}
+            />
           ) : (
             <div className="flex flex-wrap items-center gap-3">
               <LoginButton initialPubkey={null} />

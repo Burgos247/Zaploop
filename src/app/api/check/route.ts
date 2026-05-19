@@ -1,22 +1,22 @@
 import { NextResponse, type NextRequest } from "next/server";
+import NDK, { type NDKKind } from "@nostr-dev-kit/ndk";
 import { nip19 } from "nostr-tools";
-import { store } from "@/lib/store";
+import { DEFAULT_RELAYS } from "@/lib/nostr/ndk";
+import {
+  SUBSCRIPTION_EVENT_KIND,
+  SUBSCRIPTION_TAG,
+  parseSubscriptionEvent,
+} from "@/lib/nostr/sub-event";
 
 export const runtime = "nodejs";
 
-// Public membership check. The La Crypta cowork door reads the
-// subscriber's npub off a QR and calls this endpoint to gate access.
+// Public membership check, Nostr-native. Door scanner sends merchant
+// pubkey + subscriber pubkey; we query relays for the subscriber's
+// active kind 30079 event tagged with that merchant.
 //
-// Inputs (query string):
-//   m = merchant pubkey, accepts hex (64 chars) or bech32 (npub1…).
-//   u = subscriber pubkey, same.
-//
-// Response:
-//   { active: boolean, plan?, periodEnd?, subscriptionId? }
-//
-// TODO before prod: gate this behind a per-tenant API token so a
-// merchant decides who can query their membership state. Today it's
-// open — fine for the hackathon, not for actual deployments.
+// No DB, no auth — the data already lives on relays. TODO before prod:
+// gate behind a per-tenant API token so merchants control who can query
+// their membership state.
 
 function toPubkey(input: string | null): string | null {
   if (!input) return null;
@@ -38,15 +38,58 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const result = await store.isMembershipActive(merchant, subscriber);
-  if (!result.active || !result.subscription) {
-    return NextResponse.json({ active: false });
+  const ndk = new NDK({ explicitRelayUrls: [...DEFAULT_RELAYS] });
+  try {
+    await ndk.connect(3000);
+  } catch {
+    return NextResponse.json(
+      { error: "could not reach relays" },
+      { status: 503 },
+    );
   }
-  const s = result.subscription;
-  return NextResponse.json({
-    active: true,
-    plan: { slug: s.planSlug, name: s.planName, rail: s.rail, amountSat: s.planAmountSat },
-    periodEnd: s.currentPeriodEnd,
-    subscriptionId: s.id,
-  });
+
+  // Replaceable events: at most one per (subscriber, merchant, plan).
+  // The subscriber may have several plans with the same merchant — we
+  // count membership active if any one of them is still in period.
+  const events = await Promise.race([
+    ndk.fetchEvents({
+      kinds: [SUBSCRIPTION_EVENT_KIND as NDKKind],
+      authors: [subscriber],
+      "#p": [merchant],
+      "#t": [SUBSCRIPTION_TAG],
+    }),
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000)),
+  ]);
+
+  if (!events) {
+    return NextResponse.json(
+      { error: "timed out waiting for relays" },
+      { status: 504 },
+    );
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  for (const e of events) {
+    const parsed = parseSubscriptionEvent({
+      kind: e.kind!,
+      pubkey: e.pubkey,
+      tags: e.tags,
+      content: e.content,
+      created_at: e.created_at!,
+    });
+    if (parsed.expiresAt && parsed.expiresAt > now) {
+      return NextResponse.json({
+        active: true,
+        plan: {
+          slug: parsed.planSlug,
+          rail: parsed.rail,
+          amountSat: parsed.amountSat,
+          interval: parsed.interval,
+        },
+        expiresAt: parsed.expiresAt,
+      });
+    }
+  }
+
+  return NextResponse.json({ active: false });
 }
