@@ -4,6 +4,7 @@ import { nip19 } from "nostr-tools";
 import { getSession } from "@/lib/server-session";
 import { CreatePlanForm } from "@/components/dashboard/CreatePlanForm";
 import { PlanList } from "@/components/dashboard/PlanList";
+import { SubscribersList } from "@/components/dashboard/SubscribersList";
 import { RunBillingButton } from "@/components/dashboard/RunBillingButton";
 
 export const metadata = { title: "Zaploop — Panel" };
@@ -45,6 +46,7 @@ export default function AppPage() {
         </div>
 
         <PlanList pubkey={session.pubkey} />
+        <SubscribersList merchantPubkey={session.pubkey} />
         <RunBillingButton />
       </section>
     </main>
