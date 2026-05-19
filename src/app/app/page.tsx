@@ -5,6 +5,7 @@ import { getSession } from "@/lib/server-session";
 import { CreatePlanForm } from "@/components/dashboard/CreatePlanForm";
 import { PlanList } from "@/components/dashboard/PlanList";
 import { SubscribersList } from "@/components/dashboard/SubscribersList";
+import { ChargesHistory } from "@/components/dashboard/ChargesHistory";
 import { RunBillingButton } from "@/components/dashboard/RunBillingButton";
 
 export const metadata = { title: "Zaploop — Panel" };
@@ -18,13 +19,21 @@ export default function AppPage() {
   return (
     <main className="min-h-screen">
       <header className="border-b border-ink-800">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-6 py-5">
           <Link href="/" className="text-sm text-ink-300 transition hover:text-ink-100">
             ← Zaploop
           </Link>
-          <span className="font-mono text-xs text-ink-300">
-            {npub.slice(0, 14)}…{npub.slice(-6)}
-          </span>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/door"
+              className="rounded-full border border-ink-700 px-3 py-1.5 text-xs text-ink-100 transition hover:border-bolt-500 hover:bg-ink-800"
+            >
+              Puerta
+            </Link>
+            <span className="font-mono text-xs text-ink-300">
+              {npub.slice(0, 14)}…{npub.slice(-6)}
+            </span>
+          </div>
         </div>
       </header>
 
@@ -47,6 +56,7 @@ export default function AppPage() {
 
         <PlanList pubkey={session.pubkey} />
         <SubscribersList merchantPubkey={session.pubkey} />
+        <ChargesHistory merchantPubkey={session.pubkey} />
         <RunBillingButton />
       </section>
     </main>

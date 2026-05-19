@@ -180,6 +180,8 @@ export async function POST(req: NextRequest) {
         {
           serverPubkey,
           subscriptionNaddr: subNaddr,
+          merchantPubkey: plan.pubkey,
+          subscriberPubkey: sub.subscriberPubkey,
           amountSat: sub.amountSat,
           state: "paid",
           periodIndex,
@@ -199,6 +201,8 @@ export async function POST(req: NextRequest) {
           {
             serverPubkey,
             subscriptionNaddr: subNaddr,
+            merchantPubkey: sub.merchantPubkey ?? "0".repeat(64),
+            subscriberPubkey: sub.subscriberPubkey,
             amountSat: sub.amountSat ?? 0,
             state: "failed",
             periodIndex,

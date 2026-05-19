@@ -12,6 +12,8 @@ export const CHARGE_TAG = "zaploop:charge";
 export type ChargeEventInput = {
   serverPubkey: string;
   subscriptionNaddr: string;
+  merchantPubkey: string; // for the merchant's dashboard filter
+  subscriberPubkey: string; // standard NIP-01 #p tag
   amountSat: number;
   state: "paid" | "failed";
   periodIndex: number;
@@ -39,6 +41,8 @@ export function buildChargeEventTemplate(
   const tags: string[][] = [
     ["d", `${input.subscriptionNaddr}:${input.periodIndex}`],
     ["a", input.subscriptionNaddr],
+    ["m", input.merchantPubkey],
+    ["p", input.subscriberPubkey],
     ["t", CHARGE_TAG],
     ["state", input.state],
     ["amount", String(input.amountSat), "sat"],
@@ -60,6 +64,8 @@ export function buildChargeEventTemplate(
 
 export type ParsedCharge = {
   subscriptionNaddr: string | undefined;
+  merchantPubkey: string | undefined;
+  subscriberPubkey: string | undefined;
   state: "paid" | "failed" | undefined;
   amountSat: number | undefined;
   periodIndex: number | undefined;
@@ -88,6 +94,8 @@ export function parseChargeEvent(event: {
 
   return {
     subscriptionNaddr: t("a"),
+    merchantPubkey: t("m"),
+    subscriberPubkey: t("p"),
     state: t("state") as "paid" | "failed" | undefined,
     amountSat: amount ? Number(amount) : undefined,
     periodIndex: period ? Number(period) : undefined,
