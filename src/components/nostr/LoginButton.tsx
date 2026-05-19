@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { nip19 } from "nostr-tools";
 import { AUTH_EVENT_KIND } from "@/lib/nostr/auth-shared";
@@ -11,46 +11,46 @@ import {
   hasLocalIdentity,
   restoreLocalSigner,
 } from "@/lib/nostr/local-signer";
+import { LoginModal } from "./LoginModal";
 
 type Props = {
   initialPubkey: string | null;
 };
 
-type State =
-  | { kind: "idle" }
-  | { kind: "loading" }
-  | { kind: "no_extension" }
-  | { kind: "error"; message: string };
-
 export function LoginButton({ initialPubkey }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [pubkey, setPubkey] = useState<string | null>(initialPubkey);
-  const [state, setState] = useState<State>({ kind: "idle" });
   const [hasLocal, setHasLocal] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
   const mountedRef = useRef(true);
 
+  // Restore the local-signer shim on mount, then sync hasLocal. Also
+  // auto-open the modal if the URL has ?login=1 (links from /app etc.
+  // redirect there when no session).
   useEffect(() => {
+    if (typeof window !== "undefined" && !window.nostr) restoreLocalSigner();
     setHasLocal(hasLocalIdentity());
+    if (!initialPubkey && searchParams?.get("login") === "1") {
+      setModalOpen(true);
+    }
     return () => {
       mountedRef.current = false;
     };
-  }, []);
+  }, [initialPubkey, searchParams]);
 
-  async function login() {
-    setState({ kind: "loading" });
-    if (typeof window === "undefined") return;
+  function openModal() {
+    setError(null);
+    setModalOpen(true);
+  }
 
-    // Restore the localStorage-backed shim if a previous identity exists
-    // and the extension didn't run first.
-    if (!window.nostr) restoreLocalSigner();
-
-    if (!window.nostr) {
-      setState({ kind: "no_extension" });
-      return;
-    }
-
-    await doSignAndPost();
+  function closeModal() {
+    if (loading) return;
+    setModalOpen(false);
+    setError(null);
   }
 
   async function doSignAndPost() {
@@ -73,55 +73,67 @@ export function LoginButton({ initialPubkey }: Props) {
         body: JSON.stringify(signed),
       });
       if (!res.ok) {
-        const { error } = await res.json().catch(() => ({ error: "login failed" }));
-        if (!mountedRef.current) return;
-        setState({ kind: "error", message: error ?? "login failed" });
-        return;
+        const { error: msg } = await res.json().catch(() => ({ error: "login failed" }));
+        throw new Error(msg ?? "login failed");
       }
       const { pubkey: confirmedPk } = (await res.json()) as { pubkey: string };
       if (!mountedRef.current) return;
       setPubkey(confirmedPk);
       setHasLocal(hasLocalIdentity());
-      setState({ kind: "idle" });
+      setModalOpen(false);
+      setError(null);
       startTransition(() => router.refresh());
     } catch (err) {
       if (!mountedRef.current) return;
       const msg = err instanceof Error ? err.message : "unexpected error";
-      setState({
-        kind: "error",
-        message: /rejected|denied|cancel/i.test(msg) ? "rechazado en la wallet" : msg,
-      });
+      throw new Error(
+        /rejected|denied|cancel/i.test(msg) ? "rechazado en la wallet" : msg,
+      );
     }
   }
 
-  async function generateAndLogin() {
-    setState({ kind: "loading" });
+  async function pickExisting() {
+    setLoading(true);
+    setError(null);
+    try {
+      if (typeof window === "undefined" || !window.nostr)
+        throw new Error("no se detectó una identidad Nostr en este navegador");
+      await doSignAndPost();
+    } catch (err) {
+      if (!mountedRef.current) return;
+      setError(err instanceof Error ? err.message : "error inesperado");
+    } finally {
+      if (mountedRef.current) setLoading(false);
+    }
+  }
+
+  async function pickGenerate() {
+    setLoading(true);
+    setError(null);
     try {
       generateLocalIdentity();
       setHasLocal(true);
       await doSignAndPost();
     } catch (err) {
       if (!mountedRef.current) return;
-      setState({
-        kind: "error",
-        message: err instanceof Error ? err.message : "no pude generar la identidad",
-      });
+      setError(err instanceof Error ? err.message : "error inesperado");
+    } finally {
+      if (mountedRef.current) setLoading(false);
     }
   }
 
   async function logout() {
-    setState({ kind: "loading" });
+    setLoading(true);
     await fetch("/api/auth/logout", { method: "POST" });
     if (!mountedRef.current) return;
     setPubkey(null);
-    setState({ kind: "idle" });
+    setLoading(false);
     startTransition(() => router.refresh());
   }
 
   function forgetLocalIdentity() {
     clearLocalIdentity();
     setHasLocal(false);
-    // Page reload is the cleanest way to drop the shimmed window.nostr.
     window.location.reload();
   }
 
@@ -142,7 +154,7 @@ export function LoginButton({ initialPubkey }: Props) {
         <button
           type="button"
           onClick={logout}
-          disabled={state.kind === "loading"}
+          disabled={loading}
           className="text-[10px] uppercase tracking-wider text-ink-400 transition hover:text-ink-100 disabled:opacity-50"
         >
           salir
@@ -161,39 +173,28 @@ export function LoginButton({ initialPubkey }: Props) {
     );
   }
 
+  const hasExtensionOrLocal =
+    typeof window !== "undefined" && !!window.nostr;
+
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <>
       <button
         type="button"
-        onClick={login}
-        disabled={state.kind === "loading"}
-        className="inline-flex items-center gap-2 rounded-full bg-bolt-500 px-4 py-2 text-sm font-semibold text-ink-950 transition hover:bg-bolt-400 disabled:opacity-50"
+        onClick={openModal}
+        className="inline-flex items-center gap-2 rounded-full bg-bolt-500 px-4 py-2 text-sm font-semibold text-ink-950 transition hover:bg-bolt-400"
       >
-        {state.kind === "loading" ? "Conectando…" : "Conectar Nostr"}
+        Conectar Nostr
       </button>
-      {state.kind === "no_extension" && (
-        <>
-          <button
-            type="button"
-            onClick={generateAndLogin}
-            className="inline-flex items-center gap-2 rounded-full border border-ink-700 px-4 py-2 text-sm text-ink-100 transition hover:border-bolt-500 hover:bg-ink-800"
-            title="Genera un nsec efímero en este browser. Pensado para demo — no uses con sats reales."
-          >
-            Crear identidad de prueba
-          </button>
-          <a
-            href="https://getalby.com/"
-            target="_blank"
-            rel="noreferrer"
-            className="text-xs text-ink-300 underline-offset-2 hover:text-ink-100 hover:underline"
-          >
-            o instalá Alby
-          </a>
-        </>
+      {modalOpen && (
+        <LoginModal
+          hasExtensionOrLocal={hasExtensionOrLocal}
+          loading={loading}
+          error={error}
+          onPickExisting={pickExisting}
+          onPickGenerate={pickGenerate}
+          onClose={closeModal}
+        />
       )}
-      {state.kind === "error" && (
-        <span className="text-xs text-red-400">{state.message}</span>
-      )}
-    </div>
+    </>
   );
 }
