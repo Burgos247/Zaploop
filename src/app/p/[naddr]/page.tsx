@@ -143,12 +143,9 @@ export default async function PlanPage({ params }: Props) {
       </header>
 
       <section className="mx-auto max-w-3xl px-6 pb-16 pt-16">
-        <div className="flex flex-wrap items-center gap-3">
-          {p.rail && <RailPill rail={p.rail} />}
-          <span className="text-xs uppercase tracking-[0.18em] text-ink-400">
-            Plan de suscripción
-          </span>
-        </div>
+        <p className="text-xs uppercase tracking-[0.18em] text-ink-400">
+          Plan de suscripción
+        </p>
         <h1 className="mt-4 text-balance text-4xl font-semibold tracking-tight text-ink-100 sm:text-5xl">
           {p.name}
         </h1>
@@ -158,7 +155,7 @@ export default async function PlanPage({ params }: Props) {
           </p>
         )}
 
-        <dl className="mt-10 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <dl className="mt-10 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Fact label="Monto">
             <span className="font-mono text-bolt-500">
               {p.amountSat?.toLocaleString("es-AR") ?? "?"}
@@ -166,7 +163,6 @@ export default async function PlanPage({ params }: Props) {
             <span className="text-ink-300">sats</span>
           </Fact>
           <Fact label="Frecuencia">{intervalLabel(p.interval)}</Fact>
-          <Fact label="Cobro">{p.rail === "wapupay" ? "Wapupay (ARS)" : "Lightning directo"}</Fact>
         </dl>
 
         {p.lud16 && (
@@ -197,18 +193,6 @@ function Fact({ label, children }: { label: string; children: React.ReactNode })
       <dt className="text-xs uppercase tracking-wider text-ink-400">{label}</dt>
       <dd className="mt-2 text-base text-ink-100">{children}</dd>
     </div>
-  );
-}
-
-function RailPill({ rail }: { rail: NonNullable<PlanEventInput["rail"]> }) {
-  const tone =
-    rail === "self"
-      ? "border-bolt-500/40 text-bolt-500 bg-bolt-500/5"
-      : "border-emerald-500/40 text-emerald-400 bg-emerald-500/5";
-  return (
-    <span className={`rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-wider ${tone}`}>
-      {rail === "self" ? "Sats al wallet" : "ARS al banco"}
-    </span>
   );
 }
 
