@@ -169,6 +169,16 @@ export default async function PlanPage({ params }: Props) {
           <Fact label="Cobro">{p.rail === "wapupay" ? "Wapupay (ARS)" : "Lightning directo"}</Fact>
         </dl>
 
+        {p.lud16 && (
+          <p className="mt-6 text-xs text-ink-400">
+            Los sats van directo a{" "}
+            <code className="rounded bg-ink-800 px-1.5 py-0.5 font-mono text-ink-200">
+              {p.lud16}
+            </code>
+            . Zaploop nunca custodia los pagos.
+          </p>
+        )}
+
         <SubscribeBox planNaddr={params.naddr} interval={p.interval} />
 
         <p className="mt-10 text-xs text-ink-400">

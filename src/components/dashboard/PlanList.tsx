@@ -178,6 +178,11 @@ function PlanCard({ event }: { event: LoadedEvent }) {
               <span className="text-ink-400"> · slug <code className="font-mono">{p.slug}</code></span>
             )}
           </p>
+          {p.lud16 && (
+            <p className="mt-1 text-xs text-ink-400">
+              recibe en <code className="font-mono text-ink-200">{p.lud16}</code>
+            </p>
+          )}
         </div>
         {naddr && (
           <button

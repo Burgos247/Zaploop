@@ -46,6 +46,7 @@ export function CreatePlanForm({ pubkey }: { pubkey: string }) {
   const [amountSat, setAmountSat] = useState("");
   const [interval, setInterval] = useState<"weekly" | "monthly" | "quarterly" | "yearly">("monthly");
   const [rail, setRail] = useState<"self" | "wapupay">("self");
+  const [lud16, setLud16] = useState("");
   const [description, setDescription] = useState("");
   const [state, setState] = useState<State>({ kind: "idle" });
 
@@ -71,6 +72,7 @@ export function CreatePlanForm({ pubkey }: { pubkey: string }) {
         amountSat: Number(amountSat),
         interval,
         rail,
+        lud16: lud16.trim(),
         tenantSlug: tenantSlug || slug,
       });
     } catch (err) {
@@ -189,6 +191,23 @@ export function CreatePlanForm({ pubkey }: { pubkey: string }) {
           />
         </Field>
       </div>
+
+      <Field
+        label="Lightning Address"
+        hint="Donde aterrizan los sats de cada cobro. Cualquier LN address sirve: Alby, Wallet of Satoshi, Phoenix, o tu username@wapu.app para recibir en ARS."
+      >
+        <input
+          type="text"
+          required
+          autoComplete="off"
+          spellCheck={false}
+          pattern="^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+          value={lud16}
+          onChange={(e) => setLud16(e.target.value)}
+          placeholder="andy@walletofsatoshi.com"
+          className={`${inputCls} font-mono`}
+        />
+      </Field>
 
       <Field label="Descripción (opcional)">
         <textarea

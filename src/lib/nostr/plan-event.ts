@@ -25,8 +25,14 @@ export type PlanEventInput = {
   amountSat: number;
   interval: "weekly" | "monthly" | "quarterly" | "yearly";
   rail: "self" | "wapupay";
+  lud16: string; // Lightning Address — where the sats actually land
   tenantSlug: string; // for human-readable discovery
 };
+
+const LUD16_RE = /^[a-z0-9._-]+@[a-z0-9.-]+\.[a-z]{2,}$/i;
+export function isValidLud16(s: string): boolean {
+  return LUD16_RE.test(s);
+}
 
 export type UnsignedPlanEvent = {
   kind: number;
@@ -46,6 +52,8 @@ export function buildPlanEventTemplate(
     throw new Error("plan slug must be lowercase letters, digits, hyphens");
   if (input.amountSat <= 0 || !Number.isInteger(input.amountSat))
     throw new Error("amountSat must be a positive integer");
+  if (!isValidLud16(input.lud16))
+    throw new Error("lud16 must look like user@domain.tld");
 
   const tags: string[][] = [
     ["d", input.slug],
@@ -53,6 +61,7 @@ export function buildPlanEventTemplate(
     ["amount", String(input.amountSat), "sat"],
     ["interval", input.interval],
     ["rail", input.rail],
+    ["lud16", input.lud16],
     ["t", PLAN_TAG],
     ["client", APP_CLIENT_TAG],
     ["tenant", input.tenantSlug],
@@ -91,6 +100,7 @@ export function parsePlanEvent(event: {
     amountSat: amount ? Number(amount) : undefined,
     interval: interval as PlanEventInput["interval"] | undefined,
     rail: rail as PlanEventInput["rail"] | undefined,
+    lud16: t("lud16"),
     tenantSlug: t("tenant"),
   };
 }
