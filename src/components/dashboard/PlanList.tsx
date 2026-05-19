@@ -8,6 +8,7 @@ import {
   PLAN_TAG,
   parsePlanEvent,
 } from "@/lib/nostr/plan-event";
+import { PlanQrModal } from "./PlanQrModal";
 
 const DEFAULT_RELAYS = [
   "wss://relay.damus.io",
@@ -135,6 +136,7 @@ export function PlanList({ pubkey }: { pubkey: string }) {
 function PlanCard({ event }: { event: LoadedEvent }) {
   const p = event.parsed;
   const [copied, setCopied] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
   const naddr = useMemo(() => {
     if (!p.slug) return null;
     try {
@@ -148,6 +150,11 @@ function PlanCard({ event }: { event: LoadedEvent }) {
       return null;
     }
   }, [p.slug, p.pubkey]);
+
+  const planUrl = useMemo(() => {
+    if (!naddr || typeof window === "undefined") return null;
+    return `${window.location.origin}/p/${naddr}`;
+  }, [naddr]);
 
   async function copy() {
     if (!naddr) return;
@@ -185,13 +192,26 @@ function PlanCard({ event }: { event: LoadedEvent }) {
           )}
         </div>
         {naddr && (
-          <button
-            type="button"
-            onClick={copy}
-            className="inline-flex shrink-0 items-center gap-2 rounded-full border border-ink-700 px-3 py-1.5 text-xs text-ink-200 transition hover:border-bolt-500 hover:bg-ink-800"
-          >
-            {copied ? "copiado!" : "copiar naddr"}
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            {planUrl && (
+              <button
+                type="button"
+                onClick={() => setQrOpen(true)}
+                title="Mostrar QR para escanear"
+                className="inline-flex items-center gap-1.5 rounded-full border border-ink-700 px-3 py-1.5 text-xs text-ink-200 transition hover:border-bolt-500 hover:bg-ink-800"
+              >
+                <QrIcon className="h-3.5 w-3.5" />
+                QR
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={copy}
+              className="inline-flex items-center gap-2 rounded-full border border-ink-700 px-3 py-1.5 text-xs text-ink-200 transition hover:border-bolt-500 hover:bg-ink-800"
+            >
+              {copied ? "copiado!" : "copiar naddr"}
+            </button>
+          </div>
         )}
       </div>
       {naddr && (
@@ -199,7 +219,37 @@ function PlanCard({ event }: { event: LoadedEvent }) {
           {naddr}
         </code>
       )}
+      {qrOpen && planUrl && (
+        <PlanQrModal
+          url={planUrl}
+          planName={p.name}
+          onClose={() => setQrOpen(false)}
+        />
+      )}
     </li>
+  );
+}
+
+function QrIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+      <path d="M14 14h3v3h-3z" />
+      <path d="M20 14v3" />
+      <path d="M14 20h3" />
+      <path d="M20 20v1" />
+    </svg>
   );
 }
 
