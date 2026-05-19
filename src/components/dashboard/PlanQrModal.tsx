@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import QRCode from "react-qr-code";
 
 type Props = {
@@ -32,9 +33,11 @@ export function PlanQrModal({ url, planName, onClose }: Props) {
     setTimeout(() => setCopied(false), 1500);
   }
 
-  return (
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
       onClick={onClose}
       role="dialog"
       aria-modal
@@ -99,6 +102,7 @@ export function PlanQrModal({ url, planName, onClose }: Props) {
           del celular — abre la página pública del plan y completan el flow ahí.
         </p>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

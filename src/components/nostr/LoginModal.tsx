@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 
 type Props = {
   hasExtensionOrLocal: boolean;
@@ -32,9 +33,11 @@ export function LoginModal({
     };
   }, [loading, onClose]);
 
-  return (
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
       onClick={() => {
         if (!loading) onClose();
       }}
@@ -123,7 +126,8 @@ export function LoginModal({
           </p>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
