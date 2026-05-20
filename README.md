@@ -174,3 +174,7 @@ src/
 - **La Crypta** — comunidad y organización del hackatón. El caso de uso flagship (cowork tuesdays + verificación por `npub` en la puerta) está pensado para ellos.
 - **Wapupay** — sponsor del hackatón. La ruta `lud16 = usuario@wapu.app` convierte sats a ARS sin KYC al instante.
 - **NDK** + **nostr-tools** — herramientas de las que nada de esto sería viable.
+
+## Licencia
+
+[MIT](./LICENSE). Forkeá, copiá, vendelo si querés — sólo respetá la nota de copyright.
