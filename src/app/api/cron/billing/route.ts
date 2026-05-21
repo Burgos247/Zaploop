@@ -104,6 +104,11 @@ export async function POST(req: NextRequest) {
         })
       : "unknown";
 
+    if (sub.state === "canceled") {
+      outcomes.push({ sub: subNaddr, result: "skipped", reason: "canceled" });
+      continue;
+    }
+
     if (!sub.planNaddr || !sub.amountSat || !sub.interval) {
       outcomes.push({ sub: subNaddr, result: "skipped", reason: "missing tags" });
       continue;

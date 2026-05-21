@@ -136,10 +136,12 @@ export function SubscribeForm({
           </code>
           .
         </p>
-        <p className="mt-2 text-xs text-ink-400">
-          El primer cobro corre cuando el worker procese el evento. Por ahora
-          Zaploop registra la suscripción pero no mueve sats — esa pieza se
-          activa con el worker recurrente.
+        <p className="mt-3 text-xs text-ink-400">
+          Podés ver y cancelar tus suscripciones en{" "}
+          <a href="/me" className="text-ink-200 underline-offset-2 hover:underline">
+            /me
+          </a>
+          .
         </p>
       </div>
     );

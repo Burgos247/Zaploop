@@ -79,6 +79,9 @@ export async function GET(req: NextRequest) {
       created_at: subEvent.created_at!,
     });
 
+    // Canceled subs are never active, regardless of expires/charges.
+    if (sub.state === "canceled") continue;
+
     // Latest paid charge for this sub.
     const dTag = subEvent.tags.find((t) => t[0] === "d")?.[1];
     const subNaddr = dTag

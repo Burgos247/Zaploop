@@ -18,6 +18,8 @@
 export const SUBSCRIPTION_EVENT_KIND = 30079;
 export const SUBSCRIPTION_TAG = "zaploop:sub";
 
+export type SubscriptionState = "active" | "canceled";
+
 export type SubscriptionEventInput = {
   subscriberPubkey: string;
   merchantPubkey: string;
@@ -28,6 +30,7 @@ export type SubscriptionEventInput = {
   rail: "self" | "wapupay";
   expiresAt: number; // unix seconds — current period end
   nwcCiphertext: string; // NIP-44 ciphertext, encrypted to server pubkey
+  state?: SubscriptionState; // defaults to "active"
 };
 
 export type UnsignedSubscriptionEvent = {
@@ -60,6 +63,7 @@ export function buildSubscriptionEventTemplate(
       ["a", input.planNaddr],
       ["p", input.merchantPubkey],
       ["t", SUBSCRIPTION_TAG],
+      ["state", input.state ?? "active"],
       ["expires", String(input.expiresAt)],
       ["interval", input.interval],
       ["amount", String(input.amountSat), "sat"],
@@ -67,6 +71,40 @@ export function buildSubscriptionEventTemplate(
       ["plan-slug", input.planSlug],
     ],
     content: input.nwcCiphertext,
+  };
+}
+
+// Builds a replacement event that turns an existing subscription into
+// `state: canceled`. Same `d` tag as the original so it replaces. No
+// NWC URI required — there's nothing left to decrypt.
+export type CancelEventInput = {
+  subscriberPubkey: string;
+  merchantPubkey: string;
+  planNaddr: string;
+};
+
+export function buildCancelEventTemplate(
+  input: CancelEventInput,
+  now: number = Math.floor(Date.now() / 1000),
+): UnsignedSubscriptionEvent {
+  if (!/^[0-9a-f]{64}$/.test(input.subscriberPubkey))
+    throw new Error("subscriberPubkey must be 64 lowercase hex chars");
+  if (!/^[0-9a-f]{64}$/.test(input.merchantPubkey))
+    throw new Error("merchantPubkey must be 64 lowercase hex chars");
+
+  return {
+    kind: SUBSCRIPTION_EVENT_KIND,
+    pubkey: input.subscriberPubkey,
+    created_at: now,
+    tags: [
+      ["d", input.planNaddr],
+      ["a", input.planNaddr],
+      ["p", input.merchantPubkey],
+      ["t", SUBSCRIPTION_TAG],
+      ["state", "canceled"],
+      ["expires", "0"],
+    ],
+    content: "",
   };
 }
 
@@ -79,6 +117,7 @@ export type ParsedSubscription = {
   interval: SubscriptionEventInput["interval"] | undefined;
   rail: SubscriptionEventInput["rail"] | undefined;
   expiresAt: number | undefined;
+  state: SubscriptionState;
   nwcCiphertext: string;
   createdAt: number;
 };
@@ -97,6 +136,12 @@ export function parseSubscriptionEvent(event: {
   const expiresStr = t("expires");
   const amountStr = t("amount");
 
+  // Missing state tag = active (backward compat with events created
+  // before we introduced the cancel flow).
+  const rawState = t("state");
+  const state: SubscriptionState =
+    rawState === "canceled" ? "canceled" : "active";
+
   return {
     subscriberPubkey: event.pubkey,
     merchantPubkey: t("p"),
@@ -106,6 +151,7 @@ export function parseSubscriptionEvent(event: {
     interval: t("interval") as ParsedSubscription["interval"],
     rail: t("rail") as ParsedSubscription["rail"],
     expiresAt: expiresStr ? Number(expiresStr) : undefined,
+    state,
     nwcCiphertext: event.content,
     createdAt: event.created_at,
   };

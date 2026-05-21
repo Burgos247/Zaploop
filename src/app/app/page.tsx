@@ -25,6 +25,12 @@ export default function AppPage() {
           </Link>
           <div className="flex items-center gap-3">
             <Link
+              href="/me"
+              className="rounded-full border border-ink-700 px-3 py-1.5 text-xs text-ink-100 transition hover:border-bolt-500 hover:bg-ink-800"
+            >
+              Mis suscripciones
+            </Link>
+            <Link
               href="/door"
               className="rounded-full border border-ink-700 px-3 py-1.5 text-xs text-ink-100 transition hover:border-bolt-500 hover:bg-ink-800"
             >
