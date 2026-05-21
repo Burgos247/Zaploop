@@ -136,7 +136,7 @@ export async function POST(req: NextRequest) {
 
     // Cycle in seconds derived from the interval, used to decide if the
     // current period has already been paid.
-    const cycle = addInterval(0, sub.interval) - 0;
+    const cycle = addInterval(0, sub.interval);
     if (latestPaidAt !== null && latestPaidAt + cycle > now) {
       outcomes.push({
         sub: subNaddr,
@@ -191,29 +191,41 @@ export async function POST(req: NextRequest) {
         now,
       );
       const signed = signWithServer(tmpl);
-      await new NDKEvent(ndk, signed).publish(undefined, 5000);
+      const accepted = await new NDKEvent(ndk, signed).publish(undefined, 5000);
+      if (accepted.size === 0) {
+        // The sats moved but no relay durably persisted the charge event.
+        // Next worker run would not see the dedup marker and try to pay
+        // again. Surface as failed so the outcome flags it for retry.
+        throw new Error(
+          "pago hecho pero ningún relay aceptó el charge event — riesgo de doble cobro",
+        );
+      }
 
       outcomes.push({ sub: subNaddr, result: "paid", preimage: preimage.slice(0, 16) });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      try {
-        const tmpl = buildChargeEventTemplate(
-          {
-            serverPubkey,
-            subscriptionNaddr: subNaddr,
-            merchantPubkey: sub.merchantPubkey ?? "0".repeat(64),
-            subscriberPubkey: sub.subscriberPubkey,
-            amountSat: sub.amountSat ?? 0,
-            state: "failed",
-            periodIndex,
-            errorCode: "worker_error",
-            errorMessage: message,
-          },
-          now,
-        );
-        const signed = signWithServer(tmpl);
-        await new NDKEvent(ndk, signed).publish(undefined, 5000);
-      } catch {}
+      // Only publish a failure event if we have enough to address it.
+      // Otherwise the outcome still lands in the response payload.
+      if (sub.merchantPubkey) {
+        try {
+          const tmpl = buildChargeEventTemplate(
+            {
+              serverPubkey,
+              subscriptionNaddr: subNaddr,
+              merchantPubkey: sub.merchantPubkey,
+              subscriberPubkey: sub.subscriberPubkey,
+              amountSat: sub.amountSat ?? 0,
+              state: "failed",
+              periodIndex,
+              errorCode: "worker_error",
+              errorMessage: message,
+            },
+            now,
+          );
+          const signed = signWithServer(tmpl);
+          await new NDKEvent(ndk, signed).publish(undefined, 5000);
+        } catch {}
+      }
       outcomes.push({ sub: subNaddr, result: "failed", error: message });
     }
   }

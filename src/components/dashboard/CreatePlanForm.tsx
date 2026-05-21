@@ -100,6 +100,13 @@ export function CreatePlanForm({ pubkey }: { pubkey: string }) {
       const ndkEvent = new NDKEvent(ndk, signed);
       const accepted = await ndkEvent.publish(undefined, 5000);
       const acceptedRelays = Array.from(accepted).map((r) => r.url);
+      if (acceptedRelays.length === 0) {
+        setState({
+          kind: "error",
+          message: "ningún relay aceptó el plan — reintentá en unos segundos",
+        });
+        return;
+      }
       const naddr = nip19.naddrEncode({
         identifier: slug,
         pubkey,

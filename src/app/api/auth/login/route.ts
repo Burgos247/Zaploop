@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import type { NostrEvent } from "@nostr-dev-kit/ndk";
 import { verifyAuthEvent } from "@/lib/nostr/auth";
 import {
   SESSION_COOKIE_NAME,
@@ -6,6 +7,20 @@ import {
 } from "@/lib/session";
 
 export const runtime = "nodejs";
+
+function isSignedEventLike(x: unknown): x is NostrEvent {
+  if (!x || typeof x !== "object") return false;
+  const o = x as Record<string, unknown>;
+  return (
+    typeof o.id === "string" &&
+    typeof o.pubkey === "string" &&
+    typeof o.sig === "string" &&
+    typeof o.kind === "number" &&
+    typeof o.created_at === "number" &&
+    typeof o.content === "string" &&
+    Array.isArray(o.tags)
+  );
+}
 
 export async function POST(req: NextRequest) {
   let body: unknown;
@@ -16,12 +31,12 @@ export async function POST(req: NextRequest) {
   }
 
   // The client posts the raw signed Nostr event.
-  if (!body || typeof body !== "object" || !("sig" in body)) {
+  if (!isSignedEventLike(body)) {
     return NextResponse.json({ error: "expected a signed event" }, { status: 400 });
   }
 
   const origin = req.nextUrl.origin;
-  const result = await verifyAuthEvent(body as never, origin);
+  const result = await verifyAuthEvent(body, origin);
   if (!result.ok) {
     return NextResponse.json({ error: result.reason }, { status: 401 });
   }
