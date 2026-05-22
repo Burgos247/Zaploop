@@ -14,6 +14,7 @@
     "@nostr-dev-kit/ndk": "^3.0.3",
     "next": "^14.2.18",
     "nostr-tools": "^2.7.2",
+    "qr-scanner": "^1.4.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-qr-code": "^2.0.15",

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { CameraScanner } from "./CameraScanner";
 
 type Plan = {
   slug?: string;
@@ -31,10 +32,10 @@ export function DoorScanner({ merchantPubkey }: { merchantPubkey: string }) {
   const [input, setInput] = useState("");
   const [state, setState] = useState<State>({ kind: "idle" });
   const [history, setHistory] = useState<Entry[]>([]);
+  const [cameraOpen, setCameraOpen] = useState(false);
 
-  async function check(e?: React.FormEvent) {
-    if (e) e.preventDefault();
-    const trimmed = input.trim();
+  async function checkValue(rawInput: string) {
+    const trimmed = rawInput.trim();
     if (!trimmed) return;
     setState({ kind: "checking", input: trimmed });
     try {
@@ -71,9 +72,20 @@ export function DoorScanner({ merchantPubkey }: { merchantPubkey: string }) {
     }
   }
 
+  function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    checkValue(input);
+  }
+
+  function onCameraScan(raw: string) {
+    setCameraOpen(false);
+    setInput(raw);
+    checkValue(raw);
+  }
+
   return (
     <div className="space-y-6">
-      <form onSubmit={check} className="flex flex-col gap-3 sm:flex-row">
+      <form onSubmit={onSubmit} className="flex flex-col gap-3 sm:flex-row">
         <input
           type="text"
           value={input}
@@ -84,14 +96,32 @@ export function DoorScanner({ merchantPubkey }: { merchantPubkey: string }) {
           placeholder="npub1… o 64 chars hex"
           className="block flex-1 rounded-xl border border-ink-700 bg-ink-950/60 px-4 py-3 font-mono text-sm text-ink-100 placeholder:text-ink-500 focus:border-bolt-500 focus:outline-none focus:ring-1 focus:ring-bolt-500"
         />
-        <button
-          type="submit"
-          disabled={state.kind === "checking" || !input.trim()}
-          className="rounded-xl bg-bolt-500 px-6 py-3 text-sm font-semibold text-ink-950 transition hover:bg-bolt-400 disabled:opacity-50"
-        >
-          {state.kind === "checking" ? "Verificando…" : "Verificar"}
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setCameraOpen(true)}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-ink-700 px-4 py-3 text-sm font-semibold text-ink-100 transition hover:border-bolt-500 hover:bg-ink-800"
+            title="Escanear QR con la cámara"
+          >
+            <CameraIcon className="h-4 w-4" />
+            Escanear
+          </button>
+          <button
+            type="submit"
+            disabled={state.kind === "checking" || !input.trim()}
+            className="rounded-xl bg-bolt-500 px-6 py-3 text-sm font-semibold text-ink-950 transition hover:bg-bolt-400 disabled:opacity-50"
+          >
+            {state.kind === "checking" ? "Verificando…" : "Verificar"}
+          </button>
+        </div>
       </form>
+
+      {cameraOpen && (
+        <CameraScanner
+          onScan={onCameraScan}
+          onClose={() => setCameraOpen(false)}
+        />
+      )}
 
       {state.kind === "granted" && <GrantedCard state={state} />}
       {state.kind === "denied" && <DeniedCard input={state.input} />}
@@ -221,6 +251,15 @@ function XIcon({ className }: { className?: string }) {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden>
       <path d="M18 6 6 18" />
       <path d="m6 6 12 12" />
+    </svg>
+  );
+}
+
+function CameraIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden>
+      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+      <circle cx="12" cy="13" r="4" />
     </svg>
   );
 }

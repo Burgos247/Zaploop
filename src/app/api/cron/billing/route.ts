@@ -54,7 +54,19 @@ function isAuthorized(req: NextRequest): boolean {
   return !!getSession();
 }
 
+// Vercel Cron triggers this route via GET with the
+// `Authorization: Bearer ${CRON_SECRET}` header. Manual triggers from
+// the dashboard use POST with the session cookie. Both paths share
+// the same `run` function.
+export async function GET(req: NextRequest) {
+  return run(req);
+}
+
 export async function POST(req: NextRequest) {
+  return run(req);
+}
+
+async function run(req: NextRequest) {
   if (!isAuthorized(req))
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
