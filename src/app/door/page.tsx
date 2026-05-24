@@ -15,13 +15,27 @@ export default function DoorPage() {
   return (
     <main className="min-h-screen">
       <header className="border-b border-ink-800">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-5 text-sm">
-          <Link href="/app" className="text-ink-300 transition hover:text-ink-100">
-            ← Panel
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-6 py-5 text-sm">
+          <Link href="/" className="text-ink-300 transition hover:text-ink-100">
+            ← Zaploop
           </Link>
-          <span className="font-mono text-xs text-ink-400">
-            puerta de {npub.slice(0, 12)}…{npub.slice(-6)}
-          </span>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/app"
+              className="rounded-full border border-ink-700 px-3 py-1.5 text-xs text-ink-100 transition hover:border-bolt-500 hover:bg-ink-800"
+            >
+              Panel comercio
+            </Link>
+            <Link
+              href="/me"
+              className="rounded-full border border-ink-700 px-3 py-1.5 text-xs text-ink-100 transition hover:border-bolt-500 hover:bg-ink-800"
+            >
+              Mis suscripciones
+            </Link>
+            <span className="font-mono text-xs text-ink-400">
+              {npub.slice(0, 12)}…{npub.slice(-6)}
+            </span>
+          </div>
         </div>
       </header>
 

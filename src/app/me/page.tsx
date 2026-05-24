@@ -26,6 +26,12 @@ export default function MePage() {
             >
               Panel comercio
             </Link>
+            <Link
+              href="/door"
+              className="rounded-full border border-ink-700 px-3 py-1.5 text-xs text-ink-100 transition hover:border-bolt-500 hover:bg-ink-800"
+            >
+              Puerta
+            </Link>
             <span className="font-mono text-xs text-ink-300">
               {npub.slice(0, 14)}…{npub.slice(-6)}
             </span>

@@ -1,4 +1,10 @@
 import Link from "next/link";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Plan no encontrado · Zaploop",
+  description: "No pudimos cargar este plan de suscripción.",
+};
 
 export default function PlanNotFound() {
   return (
