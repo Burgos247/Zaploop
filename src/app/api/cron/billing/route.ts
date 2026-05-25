@@ -25,7 +25,32 @@ import { addInterval } from "@/lib/billing/interval";
 import { getSession } from "@/lib/server-session";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+// Vercel Hobby caps at 10s. We aim for <9s of actual work and surface
+// every step so the function log tells us exactly what was slow if we
+// hit the cap. Bump to 60 when on Pro.
+export const maxDuration = 10;
+
+// Per-step budgets in ms. Sum well under maxDuration so we always return.
+const T_RELAY_CONNECT = 2500;
+const T_FETCH_SUBS = 3000;
+const T_FETCH_PRIOR = 2500;
+const T_FETCH_PLAN = 2500;
+const T_LNURL = 2500;
+const T_PAY_NWC = 7000;
+const T_PUBLISH = 3000;
+
+// Bail after this many subs per invocation so we never run out of budget
+// mid-payment. Tune up when on Pro.
+const MAX_PER_RUN = 3;
+
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`timeout ${label} after ${ms}ms`)), ms),
+    ),
+  ]);
+}
 
 // The worker. Accepts either:
 //   - Authorization: Bearer ${CRON_SECRET}  (scheduled cron / curl)
@@ -67,6 +92,10 @@ export async function POST(req: NextRequest) {
 }
 
 async function run(req: NextRequest) {
+  const t0 = Date.now();
+  const log = (...args: unknown[]) =>
+    console.log(`[billing +${Date.now() - t0}ms]`, ...args);
+
   if (!isAuthorized(req))
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
@@ -74,31 +103,58 @@ async function run(req: NextRequest) {
   try {
     serverPubkey = getServerKeys().pk;
   } catch (err) {
+    log("server keys missing", err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "server keys missing" },
       { status: 500 },
     );
   }
 
+  log("server pubkey ok", serverPubkey.slice(0, 8));
+
   const ndk = new NDK({ explicitRelayUrls: [...DEFAULT_RELAYS] });
   try {
-    await ndk.connect(3000);
-  } catch {
+    await ndk.connect(T_RELAY_CONNECT);
+    log("ndk connected");
+  } catch (err) {
+    log("ndk connect failed", err);
     return NextResponse.json({ error: "could not reach relays" }, { status: 503 });
   }
 
-  // Pull every Zaploop sub event off the relays we know. At demo scale
-  // (<100) that's fine; production needs pagination + relay-side filters.
-  const subEvents = await ndk.fetchEvents({
-    kinds: [SUBSCRIPTION_EVENT_KIND as NDKKind],
-    "#t": [SUBSCRIPTION_TAG],
-    limit: 200,
-  });
+  let subEvents;
+  try {
+    subEvents = await withTimeout(
+      ndk.fetchEvents({
+        kinds: [SUBSCRIPTION_EVENT_KIND as NDKKind],
+        "#t": [SUBSCRIPTION_TAG],
+        limit: 200,
+      }),
+      T_FETCH_SUBS,
+      "fetch subs",
+    );
+    log(`fetched ${subEvents.size} sub event(s)`);
+  } catch (err) {
+    log("fetch subs failed", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "fetch subs failed" },
+      { status: 504 },
+    );
+  }
 
   const now = Math.floor(Date.now() / 1000);
   const outcomes: Outcome[] = [];
+  let processed = 0;
 
   for (const subEvent of subEvents) {
+    if (processed >= MAX_PER_RUN) {
+      outcomes.push({
+        sub: "batch-limit",
+        result: "skipped",
+        reason: `MAX_PER_RUN=${MAX_PER_RUN} reached; rerun to continue`,
+      });
+      break;
+    }
+    processed++;
     const sub = parseSubscriptionEvent({
       kind: subEvent.kind!,
       pubkey: subEvent.pubkey,
@@ -127,13 +183,29 @@ async function run(req: NextRequest) {
     }
 
     // Last paid charge — used both for idempotency and for renewal timing.
-    const priorCharges = await ndk.fetchEvents({
-      kinds: [CHARGE_EVENT_KIND as NDKKind],
-      authors: [serverPubkey],
-      "#a": [subNaddr],
-      "#t": [CHARGE_TAG],
-      limit: 10,
-    });
+    log(`sub ${subNaddr.slice(0, 16)}… processing`);
+    let priorCharges;
+    try {
+      priorCharges = await withTimeout(
+        ndk.fetchEvents({
+          kinds: [CHARGE_EVENT_KIND as NDKKind],
+          authors: [serverPubkey],
+          "#a": [subNaddr],
+          "#t": [CHARGE_TAG],
+          limit: 10,
+        }),
+        T_FETCH_PRIOR,
+        "fetch prior charges",
+      );
+    } catch (err) {
+      log("fetch prior failed", err);
+      outcomes.push({
+        sub: subNaddr,
+        result: "failed",
+        error: err instanceof Error ? err.message : "fetch prior failed",
+      });
+      continue;
+    }
     let latestPaidAt: number | null = null;
     let latestPeriodIndex = -1;
     for (const c of priorCharges) {
@@ -167,7 +239,12 @@ async function run(req: NextRequest) {
 
     try {
       // 1. Plan
-      const planEvent = await ndk.fetchEvent(sub.planNaddr);
+      log("→ fetch plan event");
+      const planEvent = await withTimeout(
+        ndk.fetchEvent(sub.planNaddr),
+        T_FETCH_PLAN,
+        "fetch plan",
+      );
       if (!planEvent || planEvent.kind !== PLAN_EVENT_KIND)
         throw new Error("plan event not found on relays");
       const plan = parsePlanEvent({
@@ -178,9 +255,15 @@ async function run(req: NextRequest) {
       if (!plan.lud16) throw new Error("plan has no lud16 — cannot resolve invoice");
 
       // 2. LNURL-pay → invoice
-      const { invoice } = await resolveLnurlPay(plan.lud16, sub.amountSat);
+      log(`→ LNURL-pay ${plan.lud16} ${sub.amountSat} sat`);
+      const { invoice } = await withTimeout(
+        resolveLnurlPay(plan.lud16, sub.amountSat),
+        T_LNURL,
+        "LNURL-pay",
+      );
 
       // 3. Decrypt subscriber NWC
+      log("→ decrypt NWC URI");
       let nwcUri: string;
       try {
         nwcUri = nip44DecryptFromSubscriber(sub.subscriberPubkey, sub.nwcCiphertext);
@@ -189,7 +272,13 @@ async function run(req: NextRequest) {
       }
 
       // 4. Pay
-      const { preimage } = await payInvoiceViaNwc(nwcUri, invoice);
+      log("→ NWC pay_invoice");
+      const { preimage } = await withTimeout(
+        payInvoiceViaNwc(nwcUri, invoice),
+        T_PAY_NWC,
+        "NWC pay_invoice",
+      );
+      log("← pay ok, preimage", preimage.slice(0, 12));
 
       // 5. Publish paid charge event
       const validUntil = now + cycle;
@@ -208,7 +297,8 @@ async function run(req: NextRequest) {
         now,
       );
       const signed = signWithServer(tmpl);
-      const accepted = await new NDKEvent(ndk, signed).publish(undefined, 5000);
+      const accepted = await new NDKEvent(ndk, signed).publish(undefined, T_PUBLISH);
+      log(`← charge event accepted by ${accepted.size} relay(s)`);
       if (accepted.size === 0) {
         // The sats moved but no relay durably persisted the charge event.
         // Next worker run would not see the dedup marker and try to pay
@@ -247,8 +337,10 @@ async function run(req: NextRequest) {
     }
   }
 
+  log(`done — ${outcomes.length} outcome(s)`);
   return NextResponse.json({
     processedAt: now,
+    elapsedMs: Date.now() - t0,
     serverPubkey,
     outcomes,
   });

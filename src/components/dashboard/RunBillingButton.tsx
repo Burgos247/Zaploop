@@ -21,8 +21,15 @@ export function RunBillingButton() {
 
   async function run() {
     setState({ kind: "running" });
+    // Vercel kills the function at 10s on Hobby. Give ourselves a 15s
+    // client-side cap so we always show something instead of hanging.
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), 15_000);
     try {
-      const res = await fetch("/api/cron/billing", { method: "POST" });
+      const res = await fetch("/api/cron/billing", {
+        method: "POST",
+        signal: controller.signal,
+      });
       const data = await res.json();
       if (!res.ok) {
         setState({ kind: "error", message: data.error ?? `HTTP ${res.status}` });
@@ -30,10 +37,17 @@ export function RunBillingButton() {
       }
       setState({ kind: "done", outcomes: data.outcomes ?? [], at: data.processedAt });
     } catch (err) {
+      const aborted = err instanceof Error && err.name === "AbortError";
       setState({
         kind: "error",
-        message: err instanceof Error ? err.message : "error de red",
+        message: aborted
+          ? "timeout local (15s) — el worker tardó demasiado, revisá los logs de Vercel"
+          : err instanceof Error
+            ? err.message
+            : "error de red",
       });
+    } finally {
+      clearTimeout(t);
     }
   }
 
